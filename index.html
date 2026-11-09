@@ -118,6 +118,16 @@ h2{font:700 15px/1.3 var(--font-display);margin:0}
 .side-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .side-head h2{font-size:17px}
 .chips.st .chip{flex:1 1 auto;text-align:center}
+.wm-handle{position:absolute;z-index:3;border:1.5px dashed #fff;box-shadow:0 0 0 1px rgba(0,0,0,.55);border-radius:3px;cursor:move;touch-action:none;min-width:28px;min-height:20px}
+.wm-handle::after{content:"";position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;background:linear-gradient(#fff,#fff) center/100% 2px no-repeat,linear-gradient(#fff,#fff) center/2px 100% no-repeat;filter:drop-shadow(0 0 1px #000);pointer-events:none}
+.wm-handle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.logo-row{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap}
+.pos-grid{display:grid;grid-template-columns:repeat(3,46px);gap:6px}
+.pos-grid button{height:32px;padding:0;border:1px solid var(--line);background:var(--bg);border-radius:6px;cursor:pointer;position:relative}
+.pos-grid button::after{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--muted)}
+.pos-grid button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent)}
+.pos-grid button[aria-pressed="true"]::after{background:var(--accent-ink)}
+input[type=color]{width:100%;height:36px;padding:3px;border-radius:8px;border:1px solid var(--line);background:var(--bg);cursor:pointer}
 .fl{display:flex;flex-direction:column;gap:4px}
 .fl label{font-weight:500}
 .fl input[type=text]{font:inherit;font-family:var(--font-mono);font-size:14px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%;min-width:0}
@@ -186,6 +196,7 @@ h2{font:700 15px/1.3 var(--font-display);margin:0}
         <span class="tag b">Before</span><span class="tag a">After</span>
         <div class="cmp-line"></div>
         <div class="cmp-knob" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4 2 9l4 5M12 4l4 5-4 5"/></svg></div>
+        <div class="wm-handle" id="wmHandle" tabindex="0" role="application" aria-label="Watermark position. Drag it, or use the arrow keys to move it." hidden></div>
         <input type="range" id="cmpRange" min="0" max="100" value="50" aria-label="Before and after slider">
       </div>
       <p class="stage-note" id="stNote"><span class="chipnote">Sample</span> Add your own images to preview them here. The preview is approximate; final files are processed at full size.</p>
@@ -227,8 +238,50 @@ h2{font:700 15px/1.3 var(--font-display);margin:0}
       <div class="sec">
         <h2>Finish</h2>
         <div class="sl"><label for="s_vig">Vignette</label><output id="o_vig">0</output><input type="range" id="s_vig" data-x="vig" min="0" max="100" step="1" value="0"></div>
-        <div class="fl"><label for="wm">Watermark text (optional)</label><input type="text" id="wm" maxlength="60" autocomplete="off" spellcheck="false" placeholder="e.g. © Your Name"></div>
-        <p class="hint">Watermark is added small, in the bottom-right corner of every output image.</p>
+      </div>
+      <div class="sec" id="wmSec">
+        <h2>Watermark (optional)</h2>
+        <div class="seg g2" role="radiogroup" aria-label="Watermark type">
+          <label><input type="radio" name="wmtype" value="text"><span>Text</span></label>
+          <label><input type="radio" name="wmtype" value="logo"><span>Logo image</span></label>
+        </div>
+        <div class="fl" id="wmTextBox"><label for="wm">Watermark text</label><input type="text" id="wm" maxlength="60" autocomplete="off" spellcheck="false" placeholder="e.g. © Your Name"></div>
+        <div class="fl" id="wmLogoBox" hidden>
+          <div class="logo-row"><button type="button" class="btn sm" id="wmLogoBtn">Choose logo</button><button type="button" class="linkbtn" id="wmLogoClear" hidden>Remove</button><span class="hint" id="wmLogoName">No logo chosen</span></div>
+          <input type="file" id="wmLogoIn" accept="image/*" hidden>
+          <p class="hint">A PNG with a transparent background works best.</p>
+        </div>
+        <div class="sec-in" id="wmTextOpts" style="display:flex;flex-direction:column;gap:12px">
+          <div class="seg g2" role="radiogroup" aria-label="Watermark font">
+            <label><input type="radio" name="wmfont" value="sans"><span>Sans</span></label>
+            <label><input type="radio" name="wmfont" value="serif"><span>Serif</span></label>
+            <label><input type="radio" name="wmfont" value="mono"><span>Mono</span></label>
+            <label><input type="radio" name="wmfont" value="script"><span>Script</span></label>
+          </div>
+          <div class="fl"><label for="wmColor">Text color</label><input type="color" id="wmColor" value="#ffffff"></div>
+        </div>
+        <div class="sl"><label for="s_wmSize">Size</label><output id="o_wmSize">4</output><input type="range" id="s_wmSize" data-w="wmSize" min="1" max="30" step="1" value="4"></div>
+        <div class="sl"><label for="s_wmOp">Opacity</label><output id="o_wmOp">80%</output><input type="range" id="s_wmOp" data-w="wmOp" min="10" max="100" step="1" value="80"></div>
+        <div class="sl"><label for="s_wmRot">Rotation</label><output id="o_wmRot">0°</output><input type="range" id="s_wmRot" data-w="wmRot" min="-90" max="90" step="1" value="0"></div>
+        <label class="tg"><input type="checkbox" id="wmShadow"><span><b>Shadow</b><small>Keeps the watermark readable on any background</small></span></label>
+        <label class="tg"><input type="checkbox" id="wmTile"><span><b>Repeat across the image</b><small>Tiles the watermark diagonally, harder to crop out</small></span></label>
+        <div class="sl" id="wmGapBox"><label for="s_wmGap">Spacing</label><output id="o_wmGap">100%</output><input type="range" id="s_wmGap" data-w="wmGap" min="0" max="200" step="5" value="100"></div>
+        <div class="fl" id="wmPosBox">
+          <label id="wmPosLbl">Position</label>
+          <div class="pos-grid" role="group" aria-labelledby="wmPosLbl">
+            <button type="button" data-px="0" data-py="0" aria-label="Top left" aria-pressed="false"></button>
+            <button type="button" data-px="0.5" data-py="0" aria-label="Top center" aria-pressed="false"></button>
+            <button type="button" data-px="1" data-py="0" aria-label="Top right" aria-pressed="false"></button>
+            <button type="button" data-px="0" data-py="0.5" aria-label="Middle left" aria-pressed="false"></button>
+            <button type="button" data-px="0.5" data-py="0.5" aria-label="Center" aria-pressed="false"></button>
+            <button type="button" data-px="1" data-py="0.5" aria-label="Middle right" aria-pressed="false"></button>
+            <button type="button" data-px="0" data-py="1" aria-label="Bottom left" aria-pressed="false"></button>
+            <button type="button" data-px="0.5" data-py="1" aria-label="Bottom center" aria-pressed="false"></button>
+            <button type="button" data-px="1" data-py="1" aria-label="Bottom right" aria-pressed="false"></button>
+          </div>
+          <p class="hint">Or drag the dashed box on the preview to place it anywhere. With the box selected, arrow keys nudge it (hold Shift for bigger steps).</p>
+        </div>
+        <label class="tg"><input type="checkbox" id="wmOnly"><span><b>Watermark only</b><small>Skip all enhancement and styles. Only the watermark, resizing and format change are applied.</small></span></label>
       </div>
       <div class="sec">
         <h2>Output size</h2>
@@ -296,7 +349,7 @@ var PRESETS={
   old:{label:'Old / blurry',levels:true,color:true,bright:0,contrast:12,sat:8,sharp:70,denoise:40}
 };
 var PKEYS=['levels','color','bright','contrast','sat','sharp','denoise'];
-var S={preset:'auto',levels:true,color:true,bright:0,contrast:8,sat:10,sharp:35,denoise:15,warm:0,shadow:0,style:'none',sstr:85,vig:0,wm:'',size:'x1',fmt:'same',q:92,suffix:'-enhanced'};
+var S={preset:'auto',levels:true,color:true,bright:0,contrast:8,sat:10,sharp:35,denoise:15,warm:0,shadow:0,style:'none',sstr:85,vig:0,wm:'',wmType:'text',wmFont:'sans',wmSize:4,wmOp:80,wmRot:0,wmColor:'#ffffff',wmShadow:true,wmTile:false,wmGap:100,wmX:1,wmY:1,wmOnly:false,size:'x1',fmt:'same',q:92,suffix:'-enhanced'};
 var DEF=JSON.parse(JSON.stringify(S));
 try{
   var saved=JSON.parse(localStorage.getItem(KEY)||'null');
@@ -307,6 +360,10 @@ if(['x1','x2','x3','x4','2k','4k'].indexOf(S.size)<0)S.size='x1';
 if(!PRESETS[S.preset]&&S.preset!=='custom')S.preset='auto';
 if(['none','cartoon','comic','anim3d','pencil'].indexOf(S.style)<0)S.style='none';
 S.wm=String(S.wm).slice(0,60);
+S.wmType='text';
+if(['sans','serif','mono','script'].indexOf(S.wmFont)<0)S.wmFont='sans';
+if(!/^#[0-9a-f]{6}$/i.test(S.wmColor))S.wmColor='#ffffff';
+(function(){var lim={wmSize:[1,30],wmOp:[10,100],wmRot:[-90,90],wmGap:[0,200],wmX:[0,1],wmY:[0,1]};for(var k in lim)S[k]=Math.min(lim[k][1],Math.max(lim[k][0],+S[k]||0))})();
 S.suffix=String(S.suffix).slice(0,30);
 function saveS(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
@@ -515,10 +572,40 @@ function vignette(p,w,h,v){
   for(y=0;y<h;y++){dy=(y-cy)/cy;dy*=dy;
     for(x=0;x<w;x++){dx=(x-cx)/cx;dd=(dx*dx+dy)/2;m=1-k*dd*Math.sqrt(dd)*1.3;if(m<0)m=0;o=(y*w+x)*4;p[o]*=m;p[o+1]*=m;p[o+2]*=m}}
 }
-function drawWatermark(cx,W,H,text){
-  var fs=Math.max(14,Math.round(Math.min(W,H)*0.035)),pad=Math.round(fs*0.8);
-  cx.save();cx.font='600 '+fs+'px system-ui,sans-serif';cx.textAlign='right';cx.textBaseline='bottom';
-  cx.shadowColor='rgba(0,0,0,.55)';cx.shadowBlur=fs*0.25;cx.fillStyle='rgba(255,255,255,.8)';cx.fillText(text,W-pad,H-pad);cx.restore();
+var wmLogo=null,wmMeasure=makeCanvas(2,2).getContext('2d');
+var WM_FONTS={sans:'600 {s}px system-ui,"Segoe UI",Arial,sans-serif',serif:'700 {s}px Georgia,"Times New Roman",serif',mono:'600 {s}px ui-monospace,Menlo,Consolas,monospace',script:'600 {s}px "Brush Script MT","Segoe Script","Comic Sans MS",cursive'};
+function wmFontStr(s,fs){return (WM_FONTS[s.wmFont]||WM_FONTS.sans).replace('{s}',fs.toFixed(1))}
+function wmLayout(ctx,W,H,s){
+  var base=Math.min(W,H),w,h,fs=0,text='';
+  if(s.wmType==='logo'){if(!wmLogo)return null;w=Math.min(W*0.95,W*s.wmSize*4/100);h=w*wmLogo.h/wmLogo.w}
+  else{text=String(s.wm||'').trim();if(!text)return null;fs=Math.max(10,base*s.wmSize/100);ctx.font=wmFontStr(s,fs);w=ctx.measureText(text).width;h=fs*1.25}
+  var rot=s.wmRot*Math.PI/180,c=Math.abs(Math.cos(rot)),sn=Math.abs(Math.sin(rot));
+  var bw=w*c+h*sn,bh=w*sn+h*c,m=base*0.02;
+  var cx=Math.min(Math.max(s.wmX*W,bw/2+m),W-bw/2-m),cy=Math.min(Math.max(s.wmY*H,bh/2+m),H-bh/2-m);
+  if(bw+2*m>W)cx=W/2;if(bh+2*m>H)cy=H/2;
+  return {w:w,h:h,fs:fs,text:text,rot:rot,bw:bw,bh:bh,cx:cx,cy:cy};
+}
+function wmDrawItem(ctx,L,s){
+  if(s.wmType==='logo'){ctx.drawImage(wmLogo.canvas,-L.w/2,-L.h/2,L.w,L.h)}
+  else{ctx.font=wmFontStr(s,L.fs);ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=s.wmColor;ctx.fillText(L.text,0,0)}
+}
+function drawWatermark(cx,W,H,s){
+  var L=wmLayout(cx,W,H,s);if(!L)return;
+  cx.save();cx.globalAlpha=Math.max(0.05,Math.min(1,s.wmOp/100));
+  if(s.wmShadow){var u=L.fs||L.h;cx.shadowColor='rgba(0,0,0,.6)';cx.shadowBlur=Math.max(2,u*0.2);cx.shadowOffsetY=Math.max(1,u*0.04)}
+  if(s.wmTile){
+    var gap=s.wmGap/100,sx=L.w*(1+gap),sy=L.h*(2+gap*1.5),R=Math.hypot(W,H)/2+Math.max(L.w,L.h);
+    var cells=(2*R/sx)*(2*R/sy);if(cells>3000){var kk=Math.sqrt(cells/3000);sx*=kk;sy*=kk}
+    cx.translate(W/2,H/2);cx.rotate(L.rot);
+    var row=0,x,y,off;
+    for(y=-R;y<=R;y+=sy,row++){off=(row%2)?sx/2:0;for(x=-R+off;x<=R;x+=sx){cx.save();cx.translate(x,y);wmDrawItem(cx,L,s);cx.restore()}}
+  }else{cx.translate(L.cx,L.cy);cx.rotate(L.rot);wmDrawItem(cx,L,s)}
+  cx.restore();
+}
+function effCfg(){
+  var c={},k;for(k in S)c[k]=S[k];
+  if(S.wmOnly){c.levels=false;c.color=false;c.bright=0;c.contrast=0;c.sat=0;c.sharp=0;c.denoise=0;c.warm=0;c.shadow=0;c.style='none';c.vig=0}
+  return c;
 }
 async function enhance(src,sw,sh,s,stop){
   var chk=function(){if(stop&&stop())throw new Error('aborted')};
@@ -560,7 +647,7 @@ async function enhance(src,sw,sh,s,stop){
   if(s.sharp>0){await tick();chk();sharpen(d.data,W,H,s.sharp,Math.max(1,Math.min(4,f)))}
   if(s.vig>0)vignette(d.data,W,H,s.vig);
   cx.putImageData(d,0,0);
-  if(s.wm&&String(s.wm).trim())drawWatermark(cx,W,H,String(s.wm).trim());
+  if(!s.wmOff)drawWatermark(cx,W,H,s);
   return {canvas:cur,note:note};
 }
 async function encode(canvas,fmt,q){
@@ -656,7 +743,7 @@ function makeSample(){
 var sampleCanvas=makeSample();
 
 /* ---------- preview ---------- */
-var pvTok=0,pvTimer=0,pvBase=null;
+var pvTok=0,pvTimer=0,pvBase=null,pvRes=null;
 var cmpEl=$('#cmp'),cvB=$('#cvBefore'),cvA=$('#cvAfter');
 function schedulePreview(ms){clearTimeout(pvTimer);pvTimer=setTimeout(runPreview,ms==null?220:ms)}
 async function runPreview(){
@@ -673,13 +760,14 @@ async function runPreview(){
       }
       base=pvBase.canvas;
     }else base=sampleCanvas;
-    var cfg={};for(var k in S)cfg[k]=S[k];cfg.size='x1';
+    var cfg=effCfg();cfg.size='x1';cfg.wmOff=true;
     var res=await enhance(base,base.width,base.height,cfg,stop);
-    if(stop()){return}
+    if(stop()){res.canvas.width=res.canvas.height=0;return}
     cvB.width=cvA.width=base.width;cvB.height=cvA.height=base.height;
     cvB.getContext('2d').drawImage(base,0,0);
-    cvA.getContext('2d').drawImage(res.canvas,0,0);
-    res.canvas.width=res.canvas.height=0;
+    if(pvRes){pvRes.width=pvRes.height=0}
+    pvRes=res.canvas;
+    paintWm();
     cmpEl.style.setProperty('--ar',base.width+'/'+base.height);
     cmpEl.style.setProperty('--arn',(base.width/base.height).toFixed(4));
   }catch(e){
@@ -714,7 +802,7 @@ function setUI(){
   document.querySelectorAll('input[name=size]').forEach(function(r){r.checked=(r.value===S.size)});
   document.querySelectorAll('input[name=fmt]').forEach(function(r){r.checked=(r.value===S.fmt)});
   ['warm','shadow','vig','sstr'].forEach(function(k){$('#s_'+k).value=S[k];$('#o_'+k).textContent=k==='warm'?fmtSigned(S[k]):S[k]});
-  $('#wm').value=S.wm;reflectStyles();
+  $('#wm').value=S.wm;reflectStyles();setWmUI();
   $('#s_q').value=S.q;$('#o_q').textContent=S.q;$('#s_q').disabled=S.fmt==='png';
   $('#suffix').value=S.suffix;
   reflectChips();updateStageHead();
@@ -740,9 +828,90 @@ document.querySelectorAll('[data-x]').forEach(function(el){
   el.addEventListener('input',function(){var k=el.dataset.x;S[k]=+el.value;$('#o_'+k).textContent=k==='warm'?fmtSigned(S[k]):S[k];saveS();schedulePreview()});
 });
 stylesEl.addEventListener('click',function(e){var b=e.target.closest('button[data-st]');if(!b)return;S.style=b.dataset.st;reflectStyles();saveS();schedulePreview(0)});
-$('#wm').addEventListener('input',function(e){S.wm=e.target.value.slice(0,60);saveS();schedulePreview(400)});
+$('#wm').addEventListener('input',function(e){S.wm=e.target.value.slice(0,60);saveS();paintWm()});
+/* ---- watermark UI ---- */
+var wmH=$('#wmHandle');
+function fmtW(k){var v=S[k];return k==='wmOp'||k==='wmGap'?v+'%':k==='wmRot'?v+'°':String(v)}
+function clamp01(v){return v<0?0:v>1?1:v}
+function reflectPos(){
+  document.querySelectorAll('.pos-grid button').forEach(function(b){
+    b.setAttribute('aria-pressed',(Math.abs(S.wmX-(+b.dataset.px))<0.02&&Math.abs(S.wmY-(+b.dataset.py))<0.02)?'true':'false');
+  });
+}
+function setWmUI(){
+  document.querySelectorAll('input[name=wmtype]').forEach(function(r){r.checked=(r.value===S.wmType)});
+  document.querySelectorAll('input[name=wmfont]').forEach(function(r){r.checked=(r.value===S.wmFont)});
+  $('#wmColor').value=S.wmColor;$('#wmShadow').checked=S.wmShadow;$('#wmTile').checked=S.wmTile;$('#wmOnly').checked=S.wmOnly;
+  ['wmSize','wmOp','wmRot','wmGap'].forEach(function(k){$('#s_'+k).value=S[k];$('#o_'+k).textContent=fmtW(k)});
+  var logo=S.wmType==='logo';
+  $('#wmTextBox').hidden=logo;$('#wmTextOpts').hidden=logo;$('#wmLogoBox').hidden=!logo;
+  $('#wmGapBox').hidden=!S.wmTile;$('#wmPosBox').hidden=S.wmTile;
+  $('#wmLogoName').textContent=wmLogo?wmLogo.name:'No logo chosen';$('#wmLogoClear').hidden=!wmLogo;
+  reflectPos();
+}
+function paintWm(){
+  if(!pvRes)return;
+  var x=cvA.getContext('2d');x.clearRect(0,0,cvA.width,cvA.height);x.drawImage(pvRes,0,0);
+  drawWatermark(x,cvA.width,cvA.height,S);
+  updateHandle();
+}
+function updateHandle(){
+  var W=cvA.width,H=cvA.height,L=pvRes?wmLayout(wmMeasure,W,H,S):null;
+  if(!L||S.wmTile){wmH.hidden=true;return}
+  var bw=Math.max(L.bw,W*0.06),bh=Math.max(L.bh,H*0.06);
+  wmH.hidden=false;
+  wmH.style.left=((L.cx-bw/2)/W*100)+'%';wmH.style.top=((L.cy-bh/2)/H*100)+'%';
+  wmH.style.width=(bw/W*100)+'%';wmH.style.height=(bh/H*100)+'%';
+}
+function clearLogo(){wmLogo=null;if(S.wmType==='logo')S.wmType='text'}
+document.querySelectorAll('input[name=wmtype]').forEach(function(r){r.addEventListener('change',function(){S.wmType=r.value;saveS();setWmUI();paintWm()})});
+document.querySelectorAll('input[name=wmfont]').forEach(function(r){r.addEventListener('change',function(){S.wmFont=r.value;saveS();paintWm()})});
+$('#wmColor').addEventListener('input',function(e){S.wmColor=e.target.value;saveS();paintWm()});
+$('#wmShadow').addEventListener('change',function(e){S.wmShadow=e.target.checked;saveS();paintWm()});
+$('#wmTile').addEventListener('change',function(e){S.wmTile=e.target.checked;saveS();setWmUI();paintWm()});
+$('#wmOnly').addEventListener('change',function(e){S.wmOnly=e.target.checked;saveS();schedulePreview(0)});
+document.querySelectorAll('[data-w]').forEach(function(el){
+  el.addEventListener('input',function(){var k=el.dataset.w;S[k]=+el.value;$('#o_'+k).textContent=fmtW(k);saveS();paintWm()});
+});
+document.querySelectorAll('.pos-grid button').forEach(function(b){
+  b.addEventListener('click',function(){S.wmX=+b.dataset.px;S.wmY=+b.dataset.py;saveS();reflectPos();paintWm()});
+});
+$('#wmLogoBtn').addEventListener('click',function(){$('#wmLogoIn').click()});
+$('#wmLogoClear').addEventListener('click',function(){clearLogo();saveS();setWmUI();paintWm()});
+$('#wmLogoIn').addEventListener('change',async function(e){
+  var f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    var dr=await loadDrawable(f),r=Math.min(1,600/Math.max(dr.w,dr.h));
+    var c=makeCanvas(Math.max(1,Math.round(dr.w*r)),Math.max(1,Math.round(dr.h*r)));
+    c.getContext('2d').drawImage(dr.src,0,0,c.width,c.height);dr.close();
+    wmLogo={canvas:c,w:c.width,h:c.height,name:f.name};S.wmType='logo';saveS();setWmUI();paintWm();
+  }catch(err){setMsg('Could not read that logo image.')}
+});
+(function(){
+  var drag=null;
+  wmH.addEventListener('pointerdown',function(e){
+    if(e.button!==undefined&&e.button!==0)return;
+    var r=cmpEl.getBoundingClientRect(),W=cvA.width,H=cvA.height,L=wmLayout(wmMeasure,W,H,S);if(!L)return;
+    drag={ox:(e.clientX-r.left)/r.width-L.cx/W,oy:(e.clientY-r.top)/r.height-L.cy/H,prev:cmpEl.style.getPropertyValue('--pos')||'50%'};
+    try{wmH.setPointerCapture(e.pointerId)}catch(x){}
+    cmpEl.style.setProperty('--pos','0%');e.preventDefault();
+  });
+  wmH.addEventListener('pointermove',function(e){
+    if(!drag)return;var r=cmpEl.getBoundingClientRect();
+    S.wmX=clamp01((e.clientX-r.left)/r.width-drag.ox);S.wmY=clamp01((e.clientY-r.top)/r.height-drag.oy);paintWm();
+  });
+  function end(){if(!drag)return;cmpEl.style.setProperty('--pos',drag.prev);drag=null;saveS();reflectPos()}
+  wmH.addEventListener('pointerup',end);wmH.addEventListener('pointercancel',end);
+  wmH.addEventListener('keydown',function(e){
+    var st=e.shiftKey?0.05:0.01,dx=0,dy=0;
+    if(e.key==='ArrowLeft')dx=-st;else if(e.key==='ArrowRight')dx=st;else if(e.key==='ArrowUp')dy=-st;else if(e.key==='ArrowDown')dy=st;else return;
+    e.preventDefault();var W=cvA.width,H=cvA.height,L=wmLayout(wmMeasure,W,H,S);if(!L)return;
+    S.wmX=clamp01(L.cx/W+dx);S.wmY=clamp01(L.cy/H+dy);saveS();reflectPos();paintWm();
+  });
+})();
 $('#btnReset').addEventListener('click',function(){
   for(var k in DEF)S[k]=DEF[k];
+  wmLogo=null;
   $('#cmpRange').value=50;cmpEl.style.setProperty('--pos','50%');
   setUI();saveS();schedulePreview(0);setMsg('All settings were reset to their defaults.');
 });
@@ -860,7 +1029,7 @@ function updateBar(){
 async function runAll(){
   var items=state.files.filter(function(f){return !f.bad});if(!items.length)return;
   state.busy=true;state.cancel=false;
-  var cfg={};for(var k in S)cfg[k]=S[k];
+  var cfg=effCfg();
   items.forEach(function(it){it.status='idle';it.out=null;it.note='';it.err=''});
   renderList();updateBar();
   var ok=0,fail=0,total=0,i;
@@ -939,4 +1108,4 @@ setUI();renderList();updateBar();runPreview();
 </script>
 
 </body>
-</html>
+  </html>
