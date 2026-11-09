@@ -115,6 +115,9 @@ h2{font:700 15px/1.3 var(--font-display);margin:0}
 .seg.g2{grid-template-columns:repeat(2,1fr)}.seg.g3{grid-template-columns:repeat(3,1fr)}
 .seg.g2 label span,.seg.g3 label span{border-left:0!important;background:var(--bg);font-family:var(--font-body)}
 .seg.g2 input:checked + span,.seg.g3 input:checked + span{background:var(--accent)}
+.side-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.side-head h2{font-size:17px}
+.chips.st .chip{flex:1 1 auto;text-align:center}
 .fl{display:flex;flex-direction:column;gap:4px}
 .fl label{font-weight:500}
 .fl input[type=text]{font:inherit;font-family:var(--font-mono);font-size:14px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%;min-width:0}
@@ -189,6 +192,7 @@ h2{font:700 15px/1.3 var(--font-display);margin:0}
     </section>
 
     <aside class="panel side" aria-label="Settings">
+      <div class="side-head"><h2>Settings</h2><button type="button" class="btn sm" id="btnReset" title="Restore every setting to its default">Reset settings</button></div>
       <div class="sec">
         <h2>Presets</h2>
         <div class="chips" id="presets"></div>
@@ -200,11 +204,31 @@ h2{font:700 15px/1.3 var(--font-display);margin:0}
         <div class="sl"><label for="s_bright">Brightness</label><output id="o_bright">0</output><input type="range" id="s_bright" data-k="bright" min="-50" max="50" step="1" value="0"></div>
         <div class="sl"><label for="s_contrast">Contrast</label><output id="o_contrast">0</output><input type="range" id="s_contrast" data-k="contrast" min="-50" max="50" step="1" value="0"></div>
         <div class="sl"><label for="s_sat">Saturation</label><output id="o_sat">0</output><input type="range" id="s_sat" data-k="sat" min="-50" max="50" step="1" value="0"></div>
+        <div class="sl"><label for="s_warm">Warmth</label><output id="o_warm">0</output><input type="range" id="s_warm" data-x="warm" min="-50" max="50" step="1" value="0"></div>
+        <div class="sl"><label for="s_shadow">Shadow boost</label><output id="o_shadow">0</output><input type="range" id="s_shadow" data-x="shadow" min="0" max="100" step="1" value="0"></div>
       </div>
       <div class="sec">
         <h2>Sharpness &amp; noise</h2>
         <div class="sl"><label for="s_sharp">Sharpness</label><output id="o_sharp">0</output><input type="range" id="s_sharp" data-k="sharp" min="0" max="100" step="1" value="0"></div>
         <div class="sl"><label for="s_denoise">Noise reduction</label><output id="o_denoise">0</output><input type="range" id="s_denoise" data-k="denoise" min="0" max="100" step="1" value="0"></div>
+      </div>
+      <div class="sec">
+        <h2>Style</h2>
+        <div class="chips st" id="styles" role="group" aria-label="Style">
+          <button type="button" class="chip" data-st="none" aria-pressed="true">None</button>
+          <button type="button" class="chip" data-st="cartoon" aria-pressed="false">2D Cartoon</button>
+          <button type="button" class="chip" data-st="comic" aria-pressed="false">Comic ink</button>
+          <button type="button" class="chip" data-st="anim3d" aria-pressed="false">3D Animated</button>
+          <button type="button" class="chip" data-st="pencil" aria-pressed="false">Pencil sketch</button>
+        </div>
+        <div class="sl"><label for="s_sstr">Style strength</label><output id="o_sstr">85</output><input type="range" id="s_sstr" data-x="sstr" min="10" max="100" step="1" value="85"></div>
+        <p class="hint">Turns a photo into a flat 2D cartoon, comic, soft 3D animated-film look or pencil drawing using image filters on your device. This is a filter approximation, not generative AI: it will not redraw faces or copy a specific studio's style. Large images are styled at reduced resolution, then scaled back up.</p>
+      </div>
+      <div class="sec">
+        <h2>Finish</h2>
+        <div class="sl"><label for="s_vig">Vignette</label><output id="o_vig">0</output><input type="range" id="s_vig" data-x="vig" min="0" max="100" step="1" value="0"></div>
+        <div class="fl"><label for="wm">Watermark text (optional)</label><input type="text" id="wm" maxlength="60" autocomplete="off" spellcheck="false" placeholder="e.g. © Your Name"></div>
+        <p class="hint">Watermark is added small, in the bottom-right corner of every output image.</p>
       </div>
       <div class="sec">
         <h2>Output size</h2>
@@ -272,7 +296,8 @@ var PRESETS={
   old:{label:'Old / blurry',levels:true,color:true,bright:0,contrast:12,sat:8,sharp:70,denoise:40}
 };
 var PKEYS=['levels','color','bright','contrast','sat','sharp','denoise'];
-var S={preset:'auto',levels:true,color:true,bright:0,contrast:8,sat:10,sharp:35,denoise:15,size:'x1',fmt:'same',q:92,suffix:'-enhanced'};
+var S={preset:'auto',levels:true,color:true,bright:0,contrast:8,sat:10,sharp:35,denoise:15,warm:0,shadow:0,style:'none',sstr:85,vig:0,wm:'',size:'x1',fmt:'same',q:92,suffix:'-enhanced'};
+var DEF=JSON.parse(JSON.stringify(S));
 try{
   var saved=JSON.parse(localStorage.getItem(KEY)||'null');
   if(saved&&typeof saved==='object'){for(var k in S){if(k in saved&&typeof saved[k]===typeof S[k])S[k]=saved[k]}}
@@ -280,6 +305,8 @@ try{
 if(['same','jpg','png','webp'].indexOf(S.fmt)<0)S.fmt='same';
 if(['x1','x2','x3','x4','2k','4k'].indexOf(S.size)<0)S.size='x1';
 if(!PRESETS[S.preset]&&S.preset!=='custom')S.preset='auto';
+if(['none','cartoon','comic','anim3d','pencil'].indexOf(S.style)<0)S.style='none';
+S.wm=String(S.wm).slice(0,60);
 S.suffix=String(S.suffix).slice(0,30);
 function saveS(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
@@ -369,11 +396,12 @@ function denoise(p,w,h,d){
 }
 function tone(p,an,s){
   var lr=new Uint8Array(256),lg=new Uint8Array(256),lb=new Uint8Array(256);
-  var bs=s.bright/250,cf=1+s.contrast/100,inv=1/Math.max(1,an.hi-an.lo),gains=[an.gr,an.gg,an.gb],luts=[lr,lg,lb];
+  var bs=s.bright/250,cf=1+s.contrast/100,inv=1/Math.max(1,an.hi-an.lo),gains=[an.gr*(1+(s.warm||0)*0.0025),an.gg,an.gb*(1-(s.warm||0)*0.0025)],luts=[lr,lg,lb],sh=(s.shadow||0)/100;
   for(var ch=0;ch<3;ch++){
     for(var x=0;x<256;x++){
       var v=(x-an.lo)*inv;v=v<0?0:v>1?1:v;
       if(an.gamma!==1)v=Math.pow(v,an.gamma);
+      if(sh>0)v=v+(Math.pow(v,1-0.45*sh)-v)*(1-v);
       v*=gains[ch];v+=bs;v=(v-0.5)*cf+0.5;
       luts[ch][x]=Math.round((v<0?0:v>1?1:v)*255);
     }
@@ -411,6 +439,87 @@ function sharpen(p,w,h,amt,f){
     }
   }
 }
+var STYMAX=/iPhone|iPad|Android/i.test(navigator.userAgent)?3e6:6e6;
+function lumArr(p,n){var L=new Uint8ClampedArray(n),i,o=0;for(i=0;i<n;i++,o+=4)L[i]=(p[o]*77+p[o+1]*150+p[o+2]*29)>>8;return L}
+function boxBlurGray(src,w,h,r){
+  var tmp=new Float32Array(w*h),out=new Uint8ClampedArray(w*h),x,y,i,acc,d=2*r+1,row;
+  for(y=0;y<h;y++){row=y*w;acc=0;
+    for(i=-r;i<=r;i++)acc+=src[row+Math.min(w-1,Math.max(0,i))];
+    for(x=0;x<w;x++){tmp[row+x]=acc/d;acc+=src[row+Math.min(w-1,x+r+1)]-src[row+Math.max(0,x-r)]}}
+  for(x=0;x<w;x++){acc=0;
+    for(i=-r;i<=r;i++)acc+=tmp[Math.min(h-1,Math.max(0,i))*w+x];
+    for(y=0;y<h;y++){out[y*w+x]=acc/d;acc+=tmp[Math.min(h-1,y+r+1)*w+x]-tmp[Math.max(0,y-r)*w+x]}}
+  return out;
+}
+function edgeMap(L,w,h){
+  var E=new Float32Array(w*h),x,y,i,gx,gy;
+  for(y=1;y<h-1;y++)for(x=1;x<w-1;x++){i=y*w+x;
+    gx=-L[i-w-1]-2*L[i-1]-L[i+w-1]+L[i-w+1]+2*L[i+1]+L[i+w+1];
+    gy=-L[i-w-1]-2*L[i-w]-L[i-w+1]+L[i+w-1]+2*L[i+w]+L[i+w+1];
+    E[i]=Math.sqrt(gx*gx+gy*gy);}
+  return E;
+}
+function bloom(d,w,h,amount){
+  var c=makeCanvas(w,h),x=c.getContext('2d',{willReadFrequently:true});x.putImageData(d,0,0);
+  var sw=Math.max(2,Math.round(w/12)),sh=Math.max(2,Math.round(h/12));
+  var sm=makeCanvas(sw,sh),sx=sm.getContext('2d',{willReadFrequently:true});sx.imageSmoothingQuality='high';sx.drawImage(c,0,0,sw,sh);
+  var sd=sx.getImageData(0,0,sw,sh),sp=sd.data,i,t,ch;
+  for(i=0;i<sp.length;i+=4){t=(0.299*sp[i]+0.587*sp[i+1]+0.114*sp[i+2]-140)/115;t=t<0?0:t>1?1:t;sp[i]*=t;sp[i+1]*=t;sp[i+2]*=t;sp[i+3]=255}
+  sx.putImageData(sd,0,0);
+  x.clearRect(0,0,w,h);x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(sm,0,0,w,h);
+  var bd=x.getImageData(0,0,w,h).data,p=d.data;
+  for(i=0;i<p.length;i+=4)for(ch=0;ch<3;ch++)p[i+ch]=255-(255-p[i+ch])*(255-bd[i+ch]*amount)/255;
+  c.width=c.height=0;sm.width=sm.height=0;
+}
+function applyStyle(d,w,h,name,strength){
+  var p=d.data,n=w*h,i,o,orig=strength<100?new Uint8ClampedArray(p):null;
+  var cl=function(v){return v<0?0:v>255?255:v};
+  if(name==='pencil'){
+    var g=lumArr(p,n),inv=new Uint8ClampedArray(n),v;
+    for(i=0;i<n;i++)inv[i]=255-g[i];
+    var rad=Math.max(2,Math.round(Math.min(w,h)/120)),bl=boxBlurGray(boxBlurGray(inv,w,h,rad),w,h,rad);
+    for(i=0,o=0;i<n;i++,o+=4){
+      v=Math.min(255,g[i]*255/Math.max(1,255-bl[i]));v=255*Math.pow(v/255,1.8);
+      p[o]=p[o+1]=p[o+2]=v;
+    }
+  }else{
+    denoise(p,w,h,100);
+    if(name!=='anim3d'){denoise(p,w,h,100);denoise(p,w,h,100)}
+    var L=boxBlurGray(lumArr(p,n),w,h,1),E=edgeMap(L,w,h),sat,lv,t0,t1,dk,ct;
+    if(name==='cartoon'){sat=1.28;lv=8;t0=70;t1=170;dk=0.85;ct=1.05}
+    else if(name==='comic'){sat=1.12;lv=5;t0=45;t1=120;dk=0.95;ct=1.18}
+    else{sat=1.22;lv=0;t0=90;t1=220;dk=0.22;ct=1.08}
+    var q=lv>1?(lv-1)/255:0,r0,g0,b0,gy,e,k,m,br=null,bg,bb;
+    if(name!=='anim3d'){
+      var cr=new Uint8ClampedArray(n),cg=new Uint8ClampedArray(n),cb=new Uint8ClampedArray(n),sr=Math.max(2,Math.round(Math.min(w,h)/250));
+      for(i=0,o=0;i<n;i++,o+=4){cr[i]=p[o];cg[i]=p[o+1];cb[i]=p[o+2]}
+      br=boxBlurGray(boxBlurGray(cr,w,h,sr),w,h,sr);bg=boxBlurGray(boxBlurGray(cg,w,h,sr),w,h,sr);bb=boxBlurGray(boxBlurGray(cb,w,h,sr),w,h,sr);
+    }
+    for(i=0,o=0;i<n;i++,o+=4){
+      r0=p[o];g0=p[o+1];b0=p[o+2];
+      if(br){m=E[i]/70;m=m>1?1:m;r0=br[i]+(r0-br[i])*m;g0=bg[i]+(g0-bg[i])*m;b0=bb[i]+(b0-bb[i])*m}
+      gy=0.299*r0+0.587*g0+0.114*b0;
+      r0=(gy+(r0-gy)*sat-128)*ct+128;g0=(gy+(g0-gy)*sat-128)*ct+128;b0=(gy+(b0-gy)*sat-128)*ct+128;
+      if(name==='anim3d'){r0*=1.04;b0*=0.95}
+      r0=cl(r0);g0=cl(g0);b0=cl(b0);
+      if(q){r0=Math.round(r0*q)/q;g0=Math.round(g0*q)/q;b0=Math.round(b0*q)/q}
+      e=(E[i]-t0)/(t1-t0);e=e<0?0:e>1?1:e;k=1-e*dk;
+      p[o]=r0*k;p[o+1]=g0*k;p[o+2]=b0*k;
+    }
+    if(name==='anim3d')bloom(d,w,h,0.35);
+  }
+  if(orig){var a=strength/100;for(i=0;i<p.length;i+=4){p[i]=orig[i]+(p[i]-orig[i])*a;p[i+1]=orig[i+1]+(p[i+1]-orig[i+1])*a;p[i+2]=orig[i+2]+(p[i+2]-orig[i+2])*a}}
+}
+function vignette(p,w,h,v){
+  var k=v/100*0.7,cx=w/2,cy=h/2,x,y,o,dy,dx,dd,m;
+  for(y=0;y<h;y++){dy=(y-cy)/cy;dy*=dy;
+    for(x=0;x<w;x++){dx=(x-cx)/cx;dd=(dx*dx+dy)/2;m=1-k*dd*Math.sqrt(dd)*1.3;if(m<0)m=0;o=(y*w+x)*4;p[o]*=m;p[o+1]*=m;p[o+2]*=m}}
+}
+function drawWatermark(cx,W,H,text){
+  var fs=Math.max(14,Math.round(Math.min(W,H)*0.035)),pad=Math.round(fs*0.8);
+  cx.save();cx.font='600 '+fs+'px system-ui,sans-serif';cx.textAlign='right';cx.textBaseline='bottom';
+  cx.shadowColor='rgba(0,0,0,.55)';cx.shadowBlur=fs*0.25;cx.fillStyle='rgba(255,255,255,.8)';cx.fillText(text,W-pad,H-pad);cx.restore();
+}
 async function enhance(src,sw,sh,s,stop){
   var chk=function(){if(stop&&stop())throw new Error('aborted')};
   var note='',t=fitSize(sw,sh),tw=t[0],th=t[1];
@@ -418,11 +527,19 @@ async function enhance(src,sw,sh,s,stop){
   var f=calcF(tw,th,s.size),rq=reqF(tw,th,s.size);
   if(f<rq-0.001&&!note)note='Upscale reduced to stay within the size limit';
   if(!note&&(s.size==='2k'||s.size==='4k')&&rq<=1.001)note='Already at or above the target, size kept';
+  var targetW=Math.round(tw*f),styled=!!s.style&&s.style!=='none';
+  if(styled&&tw*th>STYMAX){
+    var rr=Math.sqrt(STYMAX/(tw*th));tw=Math.max(1,Math.round(tw*rr));th=Math.max(1,Math.round(th*rr));
+    f=Math.max(1,targetW/tw);if(!note)note='Style applied at reduced resolution, then scaled back up';
+  }
   var c0=makeCanvas(tw,th),x0=c0.getContext('2d',{willReadFrequently:true});
   x0.imageSmoothingQuality='high';x0.drawImage(src,0,0,tw,th);
   var d0=x0.getImageData(0,0,tw,th);
   var an=analyze(d0.data,s);
-  if(s.denoise>0){chk();denoise(d0.data,tw,th,s.denoise);x0.putImageData(d0,0,0);await tick()}
+  if(s.style==='pencil'){an.gr=an.gg=an.gb=1}
+  if(s.denoise>0){chk();denoise(d0.data,tw,th,s.denoise);await tick()}
+  if(styled){chk();applyStyle(d0,tw,th,s.style,s.sstr);await tick()}
+  if(s.denoise>0||styled)x0.putImageData(d0,0,0);
   d0=null;chk();
   var cur=c0;
   if(f>1.001){
@@ -441,7 +558,9 @@ async function enhance(src,sw,sh,s,stop){
   var d=cx.getImageData(0,0,W,H);
   tone(d.data,an,s);
   if(s.sharp>0){await tick();chk();sharpen(d.data,W,H,s.sharp,Math.max(1,Math.min(4,f)))}
+  if(s.vig>0)vignette(d.data,W,H,s.vig);
   cx.putImageData(d,0,0);
+  if(s.wm&&String(s.wm).trim())drawWatermark(cx,W,H,String(s.wm).trim());
   return {canvas:cur,note:note};
 }
 async function encode(canvas,fmt,q){
@@ -585,6 +704,8 @@ function updateStageHead(){
 var chipsEl=$('#presets');
 chipsEl.innerHTML=Object.keys(PRESETS).map(function(k){return '<button type="button" class="chip" data-p="'+k+'" aria-pressed="false">'+PRESETS[k].label+'</button>'}).join('')+'<button type="button" class="chip" data-p="custom" aria-pressed="false" tabindex="-1">Custom</button>';
 function reflectChips(){chipsEl.querySelectorAll('button').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.p===S.preset?'true':'false')})}
+var stylesEl=$('#styles');
+function reflectStyles(){stylesEl.querySelectorAll('button').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.st===S.style?'true':'false')});$('#s_sstr').disabled=S.style==='none'}
 function setUI(){
   $('#t_levels').checked=S.levels;$('#t_color').checked=S.color;
   ['bright','contrast','sat','sharp','denoise'].forEach(function(k){
@@ -592,6 +713,8 @@ function setUI(){
   });
   document.querySelectorAll('input[name=size]').forEach(function(r){r.checked=(r.value===S.size)});
   document.querySelectorAll('input[name=fmt]').forEach(function(r){r.checked=(r.value===S.fmt)});
+  ['warm','shadow','vig','sstr'].forEach(function(k){$('#s_'+k).value=S[k];$('#o_'+k).textContent=k==='warm'?fmtSigned(S[k]):S[k]});
+  $('#wm').value=S.wm;reflectStyles();
   $('#s_q').value=S.q;$('#o_q').textContent=S.q;$('#s_q').disabled=S.fmt==='png';
   $('#suffix').value=S.suffix;
   reflectChips();updateStageHead();
@@ -613,6 +736,16 @@ document.querySelectorAll('input[name=size]').forEach(function(r){r.addEventList
 document.querySelectorAll('input[name=fmt]').forEach(function(r){r.addEventListener('change',function(){S.fmt=r.value;$('#s_q').disabled=S.fmt==='png';saveS();updateStageHead()})});
 $('#s_q').addEventListener('input',function(e){S.q=+e.target.value;$('#o_q').textContent=S.q;saveS()});
 $('#suffix').addEventListener('input',function(e){S.suffix=e.target.value;saveS()});
+document.querySelectorAll('[data-x]').forEach(function(el){
+  el.addEventListener('input',function(){var k=el.dataset.x;S[k]=+el.value;$('#o_'+k).textContent=k==='warm'?fmtSigned(S[k]):S[k];saveS();schedulePreview()});
+});
+stylesEl.addEventListener('click',function(e){var b=e.target.closest('button[data-st]');if(!b)return;S.style=b.dataset.st;reflectStyles();saveS();schedulePreview(0)});
+$('#wm').addEventListener('input',function(e){S.wm=e.target.value.slice(0,60);saveS();schedulePreview(400)});
+$('#btnReset').addEventListener('click',function(){
+  for(var k in DEF)S[k]=DEF[k];
+  $('#cmpRange').value=50;cmpEl.style.setProperty('--pos','50%');
+  setUI();saveS();schedulePreview(0);setMsg('All settings were reset to their defaults.');
+});
 
 /* ---------- file list ---------- */
 var listEl=$('#list');
